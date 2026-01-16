@@ -1,37 +1,24 @@
-import { useEffect, useState } from 'react';
-import { Text, View, FlatList } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-type Restaurant = {
-  place_id: number;
-  display_name: string;
-};
+import HomeScreen from './screens/HomeScreen';
+import MapScreen from './screens/MapScreen';
+import ReviewScreen from './screens/ReviewScreen';
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-
-  useEffect(() => {
-    fetch(
-      'https://nominatim.openstreetmap.org/search?format=json&q=restaurant+Oulu'
-    )
-      .then(res => res.json())
-      .then(data => setRestaurants(data));
-  }, []);
-
   return (
-    <View style={{ padding: 20, marginTop: 40 }}>
-      <Text style={{ fontSize: 22, fontWeight: 'bold' }}>
-        Ravintolat Oulussa
-      </Text>
-
-      <FlatList
-        data={restaurants}
-        keyExtractor={(item) => item.place_id.toString()}
-        renderItem={({ item }) => (
-          <Text style={{ paddingVertical: 8 }}>
-            {item.display_name}
-          </Text>
-        )}
-      />
-    </View>
+    <NavigationContainer>
+      <Stack.Navigator>
+        <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen name="Map" component={MapScreen} />
+        <Stack.Screen name="Reviews" component={ReviewScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
