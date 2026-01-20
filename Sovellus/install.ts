@@ -4,3 +4,5 @@
 // npm install expo
 // npx expo install react-native-screens react-native-safe-area-context
 // npm install @react-navigation/stack
+// npx expo install expo-location react-native-maps
+// npm install @react-navigation/native @react-navigation/native-stack
