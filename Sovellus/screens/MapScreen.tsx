@@ -5,6 +5,7 @@ import MapView, { Marker } from "react-native-maps";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../types/navigation";
 
+
 type Props = NativeStackScreenProps<RootStackParamList, "Map">;
 
 export default function MapScreen({ route }: Props) {
