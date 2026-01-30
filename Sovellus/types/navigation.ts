@@ -11,4 +11,10 @@ export type Place = {
   lon: number;
   address: string;
   distance: number;
+
+  type?: 'restaurant' | 'cafe';
+  cuisine?: string;
+  openingHours?: string;
+  avgRating?: number;
+  reviewCount?: number;
 };
