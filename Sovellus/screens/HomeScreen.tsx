@@ -181,17 +181,8 @@ export default function HomeScreen({ navigation }: Props) {
           keyExtractor={item => item.id.toString()}
           style={styles.list}
           renderItem={({ item }) => (
-<<<<<<< Updated upstream
           
             <TouchableOpacity style={styles.placeCard}>
-=======
-            <TouchableOpacity
-              style={styles.placeCard}
-              onPress={() =>
-                navigation.navigate('Reviews', { place: item })
-              }
-            >
->>>>>>> Stashed changes
               <Text style={styles.placeName}>{item.name}</Text>
 
               {item.avgRating !== undefined && (
@@ -222,7 +213,6 @@ export default function HomeScreen({ navigation }: Props) {
         />
       )}
 
-<<<<<<< Updated upstream
       
       {!loading && places.length === 0 && <Text style={styles.emptyText}>Ei löytynyt ravintolaa</Text>}
 
@@ -243,19 +233,6 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.buttonText}>⭐ Arvostelut</Text>
         </TouchableOpacity>
       </View>
-=======
-      {/* KARTTA */}
-      {!loading && places.length > 0 && (
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() => navigation.navigate('Map', { places })}
-          >
-            <Text style={styles.buttonText}>📍 Kartta</Text>
-          </TouchableOpacity>
-        </View>
-      )}
->>>>>>> Stashed changes
     </View>
   );
 }
