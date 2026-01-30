@@ -182,7 +182,11 @@ export default function HomeScreen({ navigation }: Props) {
           style={styles.list}
           renderItem={({ item }) => (
           
-            <TouchableOpacity style={styles.placeCard}>
+            <TouchableOpacity
+  style={styles.placeCard}
+  onPress={() => navigation.navigate('Reviews', { place: item })}
+>
+
               <Text style={styles.placeName}>{item.name}</Text>
 
               {item.avgRating !== undefined && (
@@ -226,12 +230,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.buttonText}>📍 Kartta</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Reviews')}
-        >
-          <Text style={styles.buttonText}>⭐ Arvostelut</Text>
-        </TouchableOpacity>
+        
       </View>
     </View>
   );
