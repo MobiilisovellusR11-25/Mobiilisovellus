@@ -16,7 +16,6 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
-
 type FilterType = 'all' | 'restaurant' | 'cafe';
 
 export default function HomeScreen({ navigation }: Props) {
@@ -30,9 +29,8 @@ export default function HomeScreen({ navigation }: Props) {
     loadPlaces();
   }, []);
 
-  //  Firebase: hae arvostelujen keskiarvot
   const fetchRatingsForPlaces = async (mappedPlaces: Place[]) => {
-    const updated: Place[] = [...mappedPlaces];
+    const updated = [...mappedPlaces];
 
     for (const place of updated) {
       const q = query(
@@ -43,13 +41,8 @@ export default function HomeScreen({ navigation }: Props) {
       const snapshot = await getDocs(q);
 
       if (!snapshot.empty) {
-        const ratings = snapshot.docs.map(
-          d => Number(d.data().rating) || 0
-        );
-
-        const avg =
-          ratings.reduce((a, b) => a + b, 0) / ratings.length;
-
+        const ratings = snapshot.docs.map(d => Number(d.data().rating) || 0);
+        const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
         place.avgRating = Number(avg.toFixed(1));
         place.reviewCount = ratings.length;
       } else {
@@ -62,64 +55,81 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const loadPlaces = async () => {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const { status } =
-      await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Sijaintilupa evätty');
+        return;
+      }
 
-    if (status !== 'granted') {
-      alert('Sijaintilupa evätty');
-      setLoading(false);
-      return;
-    }
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = location.coords;
 
-    const location = await Location.getCurrentPositionAsync({});
-    const { latitude, longitude } = location.coords;
+      const queryText = `
+        [out:json][timeout:25];
+        (
+          node["amenity"="restaurant"](around:10000,${latitude},${longitude});
+          way["amenity"="restaurant"](around:10000,${latitude},${longitude});
+          node["amenity"="cafe"](around:10000,${latitude},${longitude});
+          way["amenity"="cafe"](around:10000,${latitude},${longitude});
+        );
+        out tags center;
+      `;
 
-    const queryText = `
-      [out:json];
-      (
-        node["amenity"="restaurant"](around:10000,${latitude},${longitude});
-        node["amenity"="cafe"](around:10000,${latitude},${longitude});
+      const response = await fetch(
+        'https://overpass-api.de/api/interpreter',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: queryText,
+        }
       );
-      out tags center;
-    `;
 
-    const response = await fetch(
-      'https://overpass-api.de/api/interpreter',
-      { method: 'POST', body: queryText }
-    );
+      if (!response.ok) {
+        throw new Error('Overpass API error');
+      }
 
-    const data = await response.json();
+      const data = await response.json();
 
-    let mapped: Place[] = data.elements.map((item: any) => ({
-      id: item.id,
-      name: item.tags?.name ?? 'Nimetön',
-      lat: item.lat,
-      lon: item.lon,
-      address: `${item.tags?.['addr:street'] ?? ''} ${
-        item.tags?.['addr:housenumber'] ?? ''
-      }`.trim(),
-      distance: haversine(latitude, longitude, item.lat, item.lon),
+      let mapped: Place[] = data.elements
+        .map((item: any) => {
+          const lat = item.lat ?? item.center?.lat;
+          const lon = item.lon ?? item.center?.lon;
 
-      type: item.tags?.amenity === 'cafe' ? 'cafe' : 'restaurant',
-      cuisine: item.tags?.cuisine,
-      openingHours: item.tags?.opening_hours,
+          if (!lat || !lon) return null;
 
-      avgRating: undefined,
-      reviewCount: 0,
-    }));
+          return {
+            id: item.id.toString(),
+            name: item.tags?.name ?? 'Nimetön',
+            lat,
+            lon,
+            address: `${item.tags?.['addr:street'] ?? ''} ${item.tags?.['addr:housenumber'] ?? ''}`.trim(),
+            distance: haversine(latitude, longitude, lat, lon),
 
-    mapped.sort((a, b) => a.distance - b.distance);
+            type: item.tags?.amenity === 'cafe' ? 'cafe' : 'restaurant',
+            cuisine: item.tags?.cuisine,
+            openingHours: item.tags?.opening_hours,
 
-    mapped = await fetchRatingsForPlaces(mapped);
+            avgRating: undefined,
+            reviewCount: 0,
+          };
+        })
+        .filter(Boolean) as Place[];
 
-    setAllPlaces(mapped);
-    setPlaces(mapped);
-    setLoading(false);
+      mapped.sort((a, b) => a.distance - b.distance);
+      mapped = await fetchRatingsForPlaces(mapped);
+
+      setAllPlaces(mapped);
+      setPlaces(mapped);
+    } catch (e) {
+      console.error('LOAD PLACES ERROR', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  //  Haku + suodattimet
   useEffect(() => {
     let filtered = [...allPlaces];
 
@@ -127,7 +137,7 @@ export default function HomeScreen({ navigation }: Props) {
       filtered = filtered.filter(p => p.type === filter);
     }
 
-    if (search.trim() !== '') {
+    if (search.trim()) {
       filtered = filtered.filter(
         p =>
           p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -142,16 +152,14 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tervetuloa!</Text>
-      <Text style={styles.subtitle}>Lähellä olevat ravintolat</Text>
 
       <TextInput
         style={styles.searchInput}
-        placeholder="🔍 Hae ravintolaa tai keittiötä"
+        placeholder="🔍 Hae ravintolaa"
         value={search}
         onChangeText={setSearch}
       />
 
-      {/* SUODATTIMET */}
       <View style={styles.filterRow}>
         {(['all', 'restaurant', 'cafe'] as FilterType[]).map(f => (
           <TouchableOpacity
@@ -163,162 +171,69 @@ export default function HomeScreen({ navigation }: Props) {
             onPress={() => setFilter(f)}
           >
             <Text>
-              {f === 'all'
-                ? 'Kaikki'
-                : f === 'restaurant'
-                ? 'Ravintolat'
-                : 'Kahvilat'}
+              {f === 'all' ? 'Kaikki' : f === 'restaurant' ? 'Ravintolat' : 'Kahvilat'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {loading && <ActivityIndicator size="large" color="#6a4c93" />}
+      {loading && <ActivityIndicator size="large" />}
 
       {!loading && (
         <FlatList
           data={places}
-          keyExtractor={item => item.id.toString()}
-          style={styles.list}
+          keyExtractor={item => item.id}
           renderItem={({ item }) => (
-          
             <TouchableOpacity
-  style={styles.placeCard}
-  onPress={() => navigation.navigate('Reviews', { place: item })}
->
-
+              style={styles.placeCard}
+              onPress={() => navigation.navigate('Reviews', { place: item })}
+            >
               <Text style={styles.placeName}>{item.name}</Text>
-
-              {item.avgRating !== undefined && (
-                <Text style={styles.rating}>
-                  ⭐ {item.avgRating} ({item.reviewCount})
-                </Text>
+              {item.avgRating && (
+                <Text>⭐ {item.avgRating} ({item.reviewCount})</Text>
               )}
-
-              {item.cuisine && (
-                <Text style={styles.placeAddress}>
-                  🍽 {item.cuisine.replace(/;/g, ', ')}
-                </Text>
-              )}
-
-              {item.openingHours && (
-                <Text style={styles.placeAddress}>
-                  ⏰ {item.openingHours}
-                </Text>
-              )}
-
-              <Text style={styles.placeAddress}>{item.address}</Text>
-
-              <Text style={styles.placeDistance}>
-                {item.distance.toFixed(2)} km
-              </Text>
+              {item.cuisine && <Text>🍽 {item.cuisine}</Text>}
+              {item.openingHours && <Text>⏰ {item.openingHours}</Text>}
+              <Text>{item.address}</Text>
+              <Text>{item.distance.toFixed(2)} km</Text>
             </TouchableOpacity>
           )}
         />
       )}
 
-      
-      {!loading && places.length === 0 && <Text style={styles.emptyText}>Ei löytynyt ravintolaa</Text>}
-
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('Map', { places })}
-          disabled={loading || places.length === 0}
-        >
-          <Text style={styles.buttonText}>📍 Kartta</Text>
-        </TouchableOpacity>
-
-        
-      </View>
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate('Map', { places })}
+        disabled={places.length === 0}
+      >
+        <Text>📍 Kartta</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
-/*  APUFUNKTIOT */
-const haversine = (
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-) => {
+const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
-  const dLat = deg2rad(lat2 - lat1);
-  const dLon = deg2rad(lon2 - lon1);
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
 
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(deg2rad(lat1)) *
-      Math.cos(deg2rad(lat2)) *
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
       Math.sin(dLon / 2) ** 2;
 
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 };
 
-const deg2rad = (deg: number) => deg * (Math.PI / 180);
-
-/*  STYLES */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', paddingTop: 10 },
-  title: { fontSize: 30, fontWeight: 'bold', textAlign: 'center' },
-  subtitle: { textAlign: 'center', color: '#666', marginBottom: 10 },
-
-  searchInput: {
-    margin: 15,
-    padding: 12,
-    backgroundColor: '#f1f1f1',
-    borderRadius: 12,
-  },
-
-  filterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 10,
-  },
-
-  filterButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: '#eee',
-  },
-
-  filterButtonActive: {
-    backgroundColor: '#e6ddf9',
-  },
-
-  list: { paddingHorizontal: 15 },
-
-  placeCard: {
-    backgroundColor: '#f9f9f9',
-    padding: 12,
-    marginBottom: 10,
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#6a4c93',
-  },
-
-  placeName: { fontSize: 16, fontWeight: 'bold' },
-  rating: { fontSize: 14, marginBottom: 4 },
-  placeAddress: { fontSize: 13, color: '#666' },
-  placeDistance: { fontSize: 12, color: '#999', fontStyle: 'italic' },
-
-  buttonContainer: {
-    padding: 15,
-    borderTopWidth: 1,
-    borderColor: '#eee',
-  },
-
-  button: {
-    backgroundColor: '#e6ddf9',
-    paddingVertical: 14,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, padding: 10 },
+  title: { fontSize: 26, textAlign: 'center', fontWeight: 'bold' },
+  searchInput: { backgroundColor: '#eee', padding: 10, borderRadius: 10 },
+  filterRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
+  filterButton: { padding: 8, backgroundColor: '#eee', borderRadius: 20 },
+  filterButtonActive: { backgroundColor: '#e6ddf9' },
+  placeCard: { padding: 12, backgroundColor: '#f9f9f9', marginVertical: 6, borderRadius: 10 },
+  placeName: { fontWeight: 'bold' },
+  button: { backgroundColor: '#e6ddf9', padding: 15, borderRadius: 12, alignItems: 'center' },
 });

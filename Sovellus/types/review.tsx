@@ -3,5 +3,6 @@ export type Review = {
   placeId: string;
   rating: number;
   comment: string;
+  imageUrl?: string;
   createdAt: Date;
 };
