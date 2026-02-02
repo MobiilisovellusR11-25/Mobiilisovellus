@@ -1,5 +1,6 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDDLNnb4YSuDmlGhNX4X0KSVYzolXjXBgI",
@@ -8,9 +9,9 @@ const firebaseConfig = {
   storageBucket: "mobis-id.firebasestorage.app",
   messagingSenderId: "376736498097",
   appId: "1:376736498097:web:b55f7060451928c4383d90",
-  measurementId: "G-VMKFEQ3HVE"
 };
 
-const app = initializeApp(firebaseConfig);
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const db = getFirestore(app);
+export const storage = getStorage(app);
