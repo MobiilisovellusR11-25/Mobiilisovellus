@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Home: undefined;
   Map: { places: Place[] };
   Reviews: { place: Place };
+  Settings: undefined;
 };
 
 export type Place = {

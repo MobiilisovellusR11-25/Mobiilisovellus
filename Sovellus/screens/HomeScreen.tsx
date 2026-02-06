@@ -14,11 +14,14 @@ import { RootStackParamList, Place } from '../types/navigation';
 
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useTheme } from '../theme/ThemeContext';
+
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 type FilterType = 'all' | 'restaurant' | 'cafe';
 
 export default function HomeScreen({ navigation }: Props) {
+  const { theme } = useTheme();
   const [places, setPlaces] = useState<Place[]>([]);
   const [allPlaces, setAllPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(false);
@@ -150,8 +153,8 @@ export default function HomeScreen({ navigation }: Props) {
   }, [search, filter, allPlaces]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tervetuloa!</Text>
+    <View style={[styles.container, { backgroundColor: theme.backgroundColor }]}>
+      <Text style={{ color: theme.text }}>Tervetuloa!</Text>
 
       <TextInput
         style={styles.searchInput}
@@ -229,11 +232,11 @@ const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10 },
   title: { fontSize: 26, textAlign: 'center', fontWeight: 'bold' },
-  searchInput: { backgroundColor: '#eee', padding: 10, borderRadius: 10 },
+  searchInput: { backgroundColor: '#eeeeee', padding: 10, borderRadius: 10 },
   filterRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
   filterButton: { padding: 8, backgroundColor: '#eee', borderRadius: 20 },
-  filterButtonActive: { backgroundColor: '#e6ddf9' },
+  filterButtonActive: { backgroundColor: '#f7ddf9' },
   placeCard: { padding: 12, backgroundColor: '#f9f9f9', marginVertical: 6, borderRadius: 10 },
   placeName: { fontWeight: 'bold' },
-  button: { backgroundColor: '#e6ddf9', padding: 15, borderRadius: 12, alignItems: 'center' },
+  button: { backgroundColor: '#f7ddf9', padding: 15, borderRadius: 12, alignItems: 'center' },
 });

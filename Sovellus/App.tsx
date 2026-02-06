@@ -1,25 +1,14 @@
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ThemeProvider } from './theme/ThemeContext';
 
-import HomeScreen from './screens/HomeScreen';
-import MapScreen from './screens/MapScreen';
-import ReviewScreen from './screens/ReviewScreen';
-import { RootStackParamList } from './types/navigation';
-
-const Stack = createNativeStackNavigator<RootStackParamList>();
+import Navigator from './navigation/Navigator';
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen name="Map" component={MapScreen} />
-        <Stack.Screen name="Reviews" component={ReviewScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <ThemeProvider>
+      <NavigationContainer>
+        <Navigator />
+      </NavigationContainer>
+    </ThemeProvider>
   );
 }

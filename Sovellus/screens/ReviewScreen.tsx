@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   button: {
-    backgroundColor: '#e6ddf9',
+    backgroundColor: '#f7ddf9',
     padding: 10,
     borderRadius: 10,
     width: '48%',
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   submit: {
-    backgroundColor: '#cdb4f7',
+    backgroundColor: '#f7b4f4',
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
