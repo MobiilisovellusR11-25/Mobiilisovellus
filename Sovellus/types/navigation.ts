@@ -1,4 +1,5 @@
 export type RootStackParamList = {
+  Auth: undefined;
   Home: undefined;
   Map: { places: Place[] };
   Reviews: { place: Place };

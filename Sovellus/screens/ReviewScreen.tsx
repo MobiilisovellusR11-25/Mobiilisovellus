@@ -24,6 +24,7 @@ import { db, storage } from '../firebase';
 
 import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth } from '../firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reviews'>;
 
@@ -32,6 +33,7 @@ type Review = {
   rating: number;
   comment: string;
   imageUrl?: string | null;
+  username?: string | null;
 };
 
 export default function ReviewScreen({ route }: Props) {
@@ -136,11 +138,15 @@ const pickImage = async () => {
         imageUrl = await uploadImageAsync(image);
       }
 
+      const user = auth.currentUser;
+
       await addDoc(collection(db, 'reviews'), {
         placeId: place.id,
         rating,
         comment,
-        ...(imageUrl ? { imageUrl } : {}),
+        imageUrl,
+        userId: user?.uid,
+        username: user?.email, 
         createdAt: serverTimestamp(),
       });
 
@@ -160,64 +166,73 @@ const pickImage = async () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{place.name}</Text>
-
+  
       <FlatList
         data={reviews}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View style={styles.reviewCard}>
+            <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>
+              👤 {item.username ?? 'Anonyymi'}
+            </Text>
+  
             {item.imageUrl && (
               <Image
                 source={{ uri: item.imageUrl }}
                 style={styles.reviewImage}
               />
             )}
+  
             <Text>{'⭐'.repeat(item.rating)}</Text>
             <Text>{item.comment}</Text>
           </View>
         )}
-      />
-
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Kirjoita arvostelu"
-          value={comment}
-          onChangeText={setComment}
-        />
-
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.button} onPress={takePhoto}>
-            <Text>📷 Kamera</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={pickImage}>
-            <Text>🖼 Galleria</Text>
-          </TouchableOpacity>
-        </View>
-
-        {image && <Image source={{ uri: image }} style={styles.preview} />}
-
-        <View style={{ flexDirection: 'row', marginVertical: 10 }}>
-          <Text style={{ marginRight: 10 }}>Arvosana:</Text>
-          {[1, 2, 3, 4, 5].map(star => (
-            <TouchableOpacity key={star} onPress={() => setRating(star)}>
-              <Text style={{ fontSize: 20, marginHorizontal: 2 }}>
-                {star <= rating ? '⭐' : '☆'}
-              </Text>
+        ListFooterComponent={
+          <View style={styles.form}>
+            <TextInput
+              style={styles.input}
+              placeholder="Kirjoita arvostelu"
+              value={comment}
+              onChangeText={setComment}
+            />
+  
+            <View style={styles.row}>
+              <TouchableOpacity style={styles.button} onPress={takePhoto}>
+                <Text>📷 Kamera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.button} onPress={pickImage}>
+                <Text>🖼 Galleria</Text>
+              </TouchableOpacity>
+            </View>
+  
+            {image && <Image source={{ uri: image }} style={styles.preview} />}
+  
+            <View style={{ flexDirection: 'row', marginVertical: 10 }}>
+              <Text style={{ marginRight: 10 }}>Arvosana:</Text>
+              {[1, 2, 3, 4, 5].map(star => (
+                <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                  <Text style={{ fontSize: 20, marginHorizontal: 2 }}>
+                    {star <= rating ? '⭐' : '☆'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+  
+            <TouchableOpacity
+              style={styles.submit}
+              onPress={submitReview}
+              disabled={uploading}
+            >
+              <Text>{uploading ? 'Lähetetään...' : 'Lisää arvostelu'}</Text>
             </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity
-          style={styles.submit}
-          onPress={submitReview}
-          disabled={uploading}
-        >
-          <Text>{uploading ? 'Lähetetään...' : 'Lisää arvostelu'}</Text>
-        </TouchableOpacity>
-      </View>
+          </View>
+        }
+      />
     </View>
   );
+  
+
+  
 }
 
 const styles = StyleSheet.create({
