@@ -7,6 +7,7 @@ import { auth } from '../firebase';
 import AuthScreen from '../screens/AuthScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ReviewScreen from '../screens/ReviewScreen';
+import MapScreen from '../screens/MapScreen';
 import { RootStackParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,7 +36,13 @@ export default function RootNavigator() {
             component={HomeScreen}
             options={{ headerShown: false }}
           />
-  
+
+          <Stack.Screen
+            name="Map"
+            component={MapScreen}
+            options={{ title: 'Kartta' }}
+          />
+
           <Stack.Screen
             name="Reviews"
             component={ReviewScreen}
