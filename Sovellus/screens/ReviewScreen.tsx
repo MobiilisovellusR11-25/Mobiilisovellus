@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
+  Alert,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,7 +34,7 @@ type Review = {
   rating: number;
   comment: string;
   imageUrl?: string | null;
-  username?: string | null;
+  userId?: string;
 };
 
 export default function ReviewScreen({ route }: Props) {
@@ -45,7 +46,6 @@ export default function ReviewScreen({ route }: Props) {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  //Hae arvostelut
   const fetchReviews = async () => {
     const q = query(
       collection(db, 'reviews'),
@@ -66,7 +66,6 @@ export default function ReviewScreen({ route }: Props) {
     fetchReviews();
   }, []);
 
-  // Kamera
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -74,7 +73,16 @@ export default function ReviewScreen({ route }: Props) {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
 
@@ -83,51 +91,53 @@ export default function ReviewScreen({ route }: Props) {
     }
   };
 
-  //Galleria
-const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 0.7,
-  });
-
-  if (!result.canceled) {
-    setImage(result.assets[0].uri);
-  }
-};
-
-
-  // Lataa kuva ominaisuus
   const uploadImageAsync = async (uri: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
 
-    xhr.onload = async () => {
-      const blob = xhr.response as Blob;
+      xhr.onload = async () => {
+        const blob = xhr.response as Blob;
+        try {
+          const filename = `reviews/${place.id}_${Date.now()}.jpg`;
+          const imageRef = ref(storage, filename);
+          await uploadBytes(imageRef, blob);
+          const downloadUrl = await getDownloadURL(imageRef);
+          resolve(downloadUrl);
+        } catch (e) {
+          reject(e);
+        }
+      };
 
-      try {
-        const filename = `reviews/${place.id}_${Date.now()}.jpg`;
-        const imageRef = ref(storage, filename);
+      xhr.onerror = () => reject(new Error('Image upload failed'));
 
-        await uploadBytes(imageRef, blob);
-        const downloadUrl = await getDownloadURL(imageRef);
+      xhr.responseType = 'blob';
+      xhr.open('GET', uri, true);
+      xhr.send(null);
+    });
+  };
 
-        resolve(downloadUrl);
-      } catch (e) {
-        reject(e);
-      }
-    };
+  const notifyOtherReviewers = async (currentUserId: string) => {
+    const q = query(
+      collection(db, 'reviews'),
+      where('placeId', '==', place.id)
+    );
+    const snapshot = await getDocs(q);
 
-    xhr.onerror = () => reject(new Error('Image upload failed'));
+    const userIds = new Set<string>();
+    snapshot.docs.forEach(d => {
+      if (d.data().userId) userIds.add(d.data().userId);
+    });
 
-    xhr.responseType = 'blob';
-    xhr.open('GET', uri, true);
-    xhr.send(null);
-  });
-};
+    userIds.delete(currentUserId);
 
+    if (userIds.size > 0) {
+      Alert.alert(
+        'Uusi arvostelu ⭐',
+        `Uusi arvostelu paikassa ${place.name} – käy katsomassa!`
+      );
+    }
+  };
 
-
-  // Lähetä arvostelu
   const submitReview = async () => {
     if (!comment.trim()) return;
 
@@ -155,6 +165,8 @@ const pickImage = async () => {
       setImage(null);
 
       await fetchReviews();
+
+      notifyOtherReviewers(currentUserId);
     } catch (e) {
       console.error('❌ submitReview', e);
       alert('Arvostelun lähetys epäonnistui');
@@ -177,16 +189,41 @@ const pickImage = async () => {
             </Text>
   
             {item.imageUrl && (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.reviewImage}
-              />
+              <Image source={{ uri: item.imageUrl }} style={styles.reviewImage} />
             )}
   
             <Text>{'⭐'.repeat(item.rating)}</Text>
             <Text>{item.comment}</Text>
           </View>
         )}
+      />
+
+      <View style={styles.form}>
+        <TextInput
+          style={styles.input}
+          placeholder="Kirjoita arvostelu"
+          value={comment}
+          onChangeText={setComment}
+        />
+
+        <View style={styles.row}>
+          <TouchableOpacity style={styles.button} onPress={takePhoto}>
+            <Text>Ota kuva kameralla</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={pickImage}>
+            <Text>Lisää kuva galleriasta</Text>
+          </TouchableOpacity>
+        </View>
+
+        {image && <Image source={{ uri: image }} style={styles.preview} />}
+
+        <View style={{ flexDirection: 'row', marginVertical: 10 }}>
+          <Text style={{ marginRight: 10 }}>Arvosana:</Text>
+          {[1, 2, 3, 4, 5].map(star => (
+            <TouchableOpacity key={star} onPress={() => setRating(star)}>
+              <Text style={{ fontSize: 20, marginHorizontal: 2 }}>
+                {star <= rating ? '⭐' : '☆'}
+              </Text>
         ListFooterComponent={
           <View style={styles.form}>
             <TextInput

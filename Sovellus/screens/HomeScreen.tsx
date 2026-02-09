@@ -12,8 +12,11 @@ import { useEffect, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Place } from '../types/navigation';
 
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+
+import { registerForPushNotificationsAsync } from '../utils/notifications';
+import { getUserId } from '../utils/user';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 type FilterType = 'all' | 'restaurant' | 'cafe';
@@ -24,6 +27,24 @@ export default function HomeScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
+
+ // notifikaatiot
+  useEffect(() => {
+    const setupNotifications = async () => {
+      const token = await registerForPushNotificationsAsync();
+      if (!token) return;
+
+      const userId = await getUserId();
+
+      await setDoc(
+        doc(db, 'users', userId),
+        { pushToken: token },
+        { merge: true }
+      );
+    };
+
+    setupNotifications();
+  }, []);
 
   useEffect(() => {
     loadPlaces();
@@ -87,10 +108,6 @@ export default function HomeScreen({ navigation }: Props) {
         }
       );
 
-      if (!response.ok) {
-        throw new Error('Overpass API error');
-      }
-
       const data = await response.json();
 
       let mapped: Place[] = data.elements
@@ -107,11 +124,9 @@ export default function HomeScreen({ navigation }: Props) {
             lon,
             address: `${item.tags?.['addr:street'] ?? ''} ${item.tags?.['addr:housenumber'] ?? ''}`.trim(),
             distance: haversine(latitude, longitude, lat, lon),
-
             type: item.tags?.amenity === 'cafe' ? 'cafe' : 'restaurant',
             cuisine: item.tags?.cuisine,
             openingHours: item.tags?.opening_hours,
-
             avgRating: undefined,
             reviewCount: 0,
           };
@@ -124,7 +139,7 @@ export default function HomeScreen({ navigation }: Props) {
       setAllPlaces(mapped);
       setPlaces(mapped);
     } catch (e) {
-      console.error('LOAD PLACES ERROR', e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -133,9 +148,7 @@ export default function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     let filtered = [...allPlaces];
 
-    if (filter !== 'all') {
-      filtered = filtered.filter(p => p.type === filter);
-    }
+    if (filter !== 'all') filtered = filtered.filter(p => p.type === filter);
 
     if (search.trim()) {
       filtered = filtered.filter(
