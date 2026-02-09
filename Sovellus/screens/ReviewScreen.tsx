@@ -6,7 +6,6 @@ import {
   TextInput,
   TouchableOpacity,
   Image,
-  Alert,
 } from 'react-native';
 import { useState, useEffect } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -21,11 +20,10 @@ import {
   getDocs,
   orderBy,
 } from 'firebase/firestore';
-import { db, storage } from '../firebase';
+import { db, storage, auth } from '../firebase';
 
 import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { auth } from '../firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Reviews'>;
 
@@ -34,6 +32,7 @@ type Review = {
   rating: number;
   comment: string;
   imageUrl?: string | null;
+  username?: string | null;
   userId?: string;
 };
 
@@ -52,8 +51,8 @@ export default function ReviewScreen({ route }: Props) {
       where('placeId', '==', place.id),
       orderBy('createdAt', 'desc')
     );
-    const snapshot = await getDocs(q);
 
+    const snapshot = await getDocs(q);
     const data = snapshot.docs.map(doc => ({
       id: doc.id,
       ...(doc.data() as Omit<Review, 'id'>),
@@ -74,10 +73,7 @@ export default function ReviewScreen({ route }: Props) {
     }
 
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setImage(result.assets[0].uri);
   };
 
   const pickImage = async () => {
@@ -86,56 +82,18 @@ export default function ReviewScreen({ route }: Props) {
       quality: 0.7,
     });
 
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setImage(result.assets[0].uri);
   };
 
   const uploadImageAsync = async (uri: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+    const response = await fetch(uri);
+    const blob = await response.blob();
 
-      xhr.onload = async () => {
-        const blob = xhr.response as Blob;
-        try {
-          const filename = `reviews/${place.id}_${Date.now()}.jpg`;
-          const imageRef = ref(storage, filename);
-          await uploadBytes(imageRef, blob);
-          const downloadUrl = await getDownloadURL(imageRef);
-          resolve(downloadUrl);
-        } catch (e) {
-          reject(e);
-        }
-      };
+    const filename = `reviews/${place.id}_${Date.now()}.jpg`;
+    const imageRef = ref(storage, filename);
 
-      xhr.onerror = () => reject(new Error('Image upload failed'));
-
-      xhr.responseType = 'blob';
-      xhr.open('GET', uri, true);
-      xhr.send(null);
-    });
-  };
-
-  const notifyOtherReviewers = async (currentUserId: string) => {
-    const q = query(
-      collection(db, 'reviews'),
-      where('placeId', '==', place.id)
-    );
-    const snapshot = await getDocs(q);
-
-    const userIds = new Set<string>();
-    snapshot.docs.forEach(d => {
-      if (d.data().userId) userIds.add(d.data().userId);
-    });
-
-    userIds.delete(currentUserId);
-
-    if (userIds.size > 0) {
-      Alert.alert(
-        'Uusi arvostelu ⭐',
-        `Uusi arvostelu paikassa ${place.name} – käy katsomassa!`
-      );
-    }
+    await uploadBytes(imageRef, blob);
+    return await getDownloadURL(imageRef);
   };
 
   const submitReview = async () => {
@@ -144,9 +102,7 @@ export default function ReviewScreen({ route }: Props) {
     setUploading(true);
     try {
       let imageUrl: string | null = null;
-      if (image) {
-        imageUrl = await uploadImageAsync(image);
-      }
+      if (image) imageUrl = await uploadImageAsync(image);
 
       const user = auth.currentUser;
 
@@ -156,7 +112,7 @@ export default function ReviewScreen({ route }: Props) {
         comment,
         imageUrl,
         userId: user?.uid,
-        username: user?.email, 
+        username: user?.email,
         createdAt: serverTimestamp(),
       });
 
@@ -164,11 +120,9 @@ export default function ReviewScreen({ route }: Props) {
       setRating(5);
       setImage(null);
 
-      await fetchReviews();
-
-      notifyOtherReviewers(currentUserId);
+      fetchReviews();
     } catch (e) {
-      console.error('❌ submitReview', e);
+      console.error(e);
       alert('Arvostelun lähetys epäonnistui');
     } finally {
       setUploading(false);
@@ -178,52 +132,24 @@ export default function ReviewScreen({ route }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{place.name}</Text>
-  
+
       <FlatList
         data={reviews}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
           <View style={styles.reviewCard}>
-            <Text style={{ fontWeight: 'bold', marginBottom: 4 }}>
+            <Text style={{ fontWeight: 'bold' }}>
               👤 {item.username ?? 'Anonyymi'}
             </Text>
-  
+
             {item.imageUrl && (
               <Image source={{ uri: item.imageUrl }} style={styles.reviewImage} />
             )}
-  
+
             <Text>{'⭐'.repeat(item.rating)}</Text>
             <Text>{item.comment}</Text>
           </View>
         )}
-      />
-
-      <View style={styles.form}>
-        <TextInput
-          style={styles.input}
-          placeholder="Kirjoita arvostelu"
-          value={comment}
-          onChangeText={setComment}
-        />
-
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.button} onPress={takePhoto}>
-            <Text>Ota kuva kameralla</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={pickImage}>
-            <Text>Lisää kuva galleriasta</Text>
-          </TouchableOpacity>
-        </View>
-
-        {image && <Image source={{ uri: image }} style={styles.preview} />}
-
-        <View style={{ flexDirection: 'row', marginVertical: 10 }}>
-          <Text style={{ marginRight: 10 }}>Arvosana:</Text>
-          {[1, 2, 3, 4, 5].map(star => (
-            <TouchableOpacity key={star} onPress={() => setRating(star)}>
-              <Text style={{ fontSize: 20, marginHorizontal: 2 }}>
-                {star <= rating ? '⭐' : '☆'}
-              </Text>
         ListFooterComponent={
           <View style={styles.form}>
             <TextInput
@@ -232,7 +158,7 @@ export default function ReviewScreen({ route }: Props) {
               value={comment}
               onChangeText={setComment}
             />
-  
+
             <View style={styles.row}>
               <TouchableOpacity style={styles.button} onPress={takePhoto}>
                 <Text>📷 Kamera</Text>
@@ -241,20 +167,20 @@ export default function ReviewScreen({ route }: Props) {
                 <Text>🖼 Galleria</Text>
               </TouchableOpacity>
             </View>
-  
+
             {image && <Image source={{ uri: image }} style={styles.preview} />}
-  
+
             <View style={{ flexDirection: 'row', marginVertical: 10 }}>
               <Text style={{ marginRight: 10 }}>Arvosana:</Text>
               {[1, 2, 3, 4, 5].map(star => (
                 <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                  <Text style={{ fontSize: 20, marginHorizontal: 2 }}>
+                  <Text style={{ fontSize: 20 }}>
                     {star <= rating ? '⭐' : '☆'}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-  
+
             <TouchableOpacity
               style={styles.submit}
               onPress={submitReview}
@@ -267,9 +193,6 @@ export default function ReviewScreen({ route }: Props) {
       />
     </View>
   );
-  
-
-  
 }
 
 const styles = StyleSheet.create({
