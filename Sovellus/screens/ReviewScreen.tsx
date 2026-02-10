@@ -10,6 +10,7 @@ import {
 import { useState, useEffect } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
+import { useTheme } from '../theme/ThemeContext';
 
 import {
   collection,
@@ -37,6 +38,7 @@ type Review = {
 export default function ReviewScreen({ route }: Props) {
   const { place } = route.params;
 
+  const { theme } = useTheme();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -158,50 +160,125 @@ const pickImage = async () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{place.name}</Text>
+    <View style={[
+      styles.container,
+      { backgroundColor: theme.backgroundColor },
+    ]}>
+
+      <Text style={[
+        styles.title,
+        { color: theme.text },
+      ]}>
+        {place.name}
+      </Text>
 
       <FlatList
         data={reviews}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <View style={styles.reviewCard}>
+          <View 
+            style={[
+              styles.reviewCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+          >
+
             {item.imageUrl && (
               <Image
                 source={{ uri: item.imageUrl }}
                 style={styles.reviewImage}
               />
             )}
-            <Text>{'⭐'.repeat(item.rating)}</Text>
-            <Text>{item.comment}</Text>
+
+            <Text style={{
+              color: theme.text,
+              fontWeight: 'bold',
+            }}>
+              {'⭐'.repeat(item.rating)}
+            </Text>
+
+            <Text style={{
+              color: theme.textSecondary,
+            }}>
+              {item.comment}
+            </Text>
           </View>
         )}
       />
 
-      <View style={styles.form}>
+      <View 
+        style={[
+          styles.form,
+          { borderColor: theme.border },
+        ]}
+      >
+
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: theme.input,
+              color: theme.text,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
+          placeholderTextColor={ theme.textSecondary }
           placeholder="Kirjoita arvostelu"
           value={comment}
           onChangeText={setComment}
         />
 
         <View style={styles.row}>
-          <TouchableOpacity style={styles.button} onPress={takePhoto}>
-            <Text>📷 Kamera</Text>
+          <TouchableOpacity 
+            style={[
+              styles.button,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]} onPress={takePhoto}>
+            <Text style={{ color: theme.text }}>📷 Kamera</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={pickImage}>
-            <Text>🖼 Galleria</Text>
+
+          <TouchableOpacity 
+            style={[
+              styles.button,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]} onPress={pickImage}>
+            <Text style={{ color: theme.text }}>🖼 Galleria</Text>
           </TouchableOpacity>
         </View>
 
         {image && <Image source={{ uri: image }} style={styles.preview} />}
 
         <View style={{ flexDirection: 'row', marginVertical: 10 }}>
-          <Text style={{ marginRight: 10 }}>Arvosana:</Text>
+          <Text
+            style={{ 
+              marginRight: 10,
+              color: theme.text,
+              }}>
+                Arvosana:
+              </Text>
+
           {[1, 2, 3, 4, 5].map(star => (
             <TouchableOpacity key={star} onPress={() => setRating(star)}>
-              <Text style={{ fontSize: 20, marginHorizontal: 2 }}>
+              <Text 
+                style={{
+                  fontSize: 20, 
+                  marginHorizontal: 2, 
+                  color: star <= rating ? theme.primary : theme.textSecondary,
+                  }}
+                >
                 {star <= rating ? '⭐' : '☆'}
               </Text>
             </TouchableOpacity>
@@ -209,11 +286,20 @@ const pickImage = async () => {
         </View>
 
         <TouchableOpacity
-          style={styles.submit}
+          style={[
+            styles.submit,
+            {
+              backgroundColor: theme.primary,
+              borderColor: theme.border,
+              borderWidth: 1,
+            },
+          ]}
           onPress={submitReview}
           disabled={uploading}
         >
-          <Text>{uploading ? 'Lähetetään...' : 'Lisää arvostelu'}</Text>
+          <Text style={{ color: theme.text, fontWeight: "bold" }}>
+            {uploading ? 'Lähetetään...' : 'Lisää arvostelu'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -221,45 +307,69 @@ const pickImage = async () => {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 15 },
-  title: { fontSize: 22, textAlign: 'center', fontWeight: 'bold' },
+  container: { 
+    flex: 1, 
+    padding: 15 
+  },
+
+  title: { 
+    fontSize: 22, 
+    textAlign: 'center', 
+    fontWeight: 'bold',
+    marginBottom: 10, 
+  },
+
   reviewCard: {
-    backgroundColor: '#f9f9f9',
     padding: 10,
     marginVertical: 6,
     borderRadius: 10,
+    borderWidth: 1,
   },
+
   reviewImage: {
     width: '100%',
     height: 150,
     borderRadius: 8,
     marginBottom: 6,
   },
-  form: { borderTopWidth: 1, borderColor: '#eee', paddingTop: 10 },
+
+  form: { 
+    borderTopWidth: 1, 
+    paddingTop: 10,
+    marginTop: 10, 
+  },
+
   input: {
-    backgroundColor: '#f1f1f1',
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
+    borderWidth: 1,
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
+
+  row: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+  },
+
   button: {
-    backgroundColor: '#f7ddf9',
     padding: 10,
     borderRadius: 10,
     width: '48%',
     alignItems: 'center',
+    borderWidth: 1,
   },
+
   preview: {
     width: '100%',
     height: 180,
     marginVertical: 10,
     borderRadius: 10,
   },
+
   submit: {
-    backgroundColor: '#f7b4f4',
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
   },
 });

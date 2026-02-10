@@ -157,7 +157,14 @@ export default function HomeScreen({ navigation }: Props) {
       <Text style={{ color: theme.text }}>Tervetuloa!</Text>
 
       <TextInput
-        style={styles.searchInput}
+        style={[
+          styles.searchInput,
+          {
+            backgroundColor: theme.input,
+            borderColor: theme.border,
+            color: theme.text,
+          }
+        ]}
         placeholder="🔍 Hae ravintolaa"
         value={search}
         onChangeText={setSearch}
@@ -169,7 +176,11 @@ export default function HomeScreen({ navigation }: Props) {
             key={f}
             style={[
               styles.filterButton,
-              filter === f && styles.filterButtonActive,
+              {
+                backgroundColor:
+                  filter === f ? theme.primary : theme.input,
+                borderColor: theme.border,
+              },
             ]}
             onPress={() => setFilter(f)}
           >
@@ -188,28 +199,78 @@ export default function HomeScreen({ navigation }: Props) {
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.placeCard}
+              style={[
+                styles.placeCard,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+              ]}
               onPress={() => navigation.navigate('Reviews', { place: item })}
             >
-              <Text style={styles.placeName}>{item.name}</Text>
+              <Text style={[
+                styles.placeName,
+                { color: theme.text }
+              ]}>
+                {item.name}
+              </Text>
+
               {item.avgRating && (
-                <Text>⭐ {item.avgRating} ({item.reviewCount})</Text>
+                <Text style={{ color: theme.textSecondary }}>
+                  ⭐ {item.avgRating} ({item.reviewCount})
+                </Text>
               )}
-              {item.cuisine && <Text>🍽 {item.cuisine}</Text>}
-              {item.openingHours && <Text>⏰ {item.openingHours}</Text>}
-              <Text>{item.address}</Text>
-              <Text>{item.distance.toFixed(2)} km</Text>
+
+              {item.cuisine && (
+              <Text style={{ color: theme.textSecondary }}>
+                🍽 {item.cuisine}
+              </Text>
+              )}
+              
+              {item.openingHours && (
+                <Text style={{ color: theme.textSecondary }}>
+                  ⏰ {item.openingHours}
+                </Text>
+              )}
+
+              <Text style={{ color: theme.textSecondary }}>
+                {item.address}
+              </Text>
+
+              <Text style={{ color: theme.textSecondary }}>
+                {item.distance.toFixed(2)} km
+              </Text>
             </TouchableOpacity>
           )}
         />
       )}
 
       <TouchableOpacity
-        style={styles.button}
+        style={[
+          styles.button,
+          {
+            backgroundColor:
+              places.length === 0
+                ? theme.input
+                : theme.primary,
+            borderColor: theme.border,
+            opacity: places.length === 0 ? 0.6 : 1,
+          },
+        ]}
         onPress={() => navigation.navigate('Map', { places })}
         disabled={places.length === 0}
       >
-        <Text>📍 Kartta</Text>
+        <Text
+          style={{
+            color:
+              places.length === 0
+                ? theme.textSecondary
+                : theme.text,
+              fontWeight: "bold",
+              fontSize: 16,
+          }}
+        >
+          📍 Kartta</Text>
       </TouchableOpacity>
     </View>
   );
@@ -232,11 +293,11 @@ const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10 },
   title: { fontSize: 26, textAlign: 'center', fontWeight: 'bold' },
-  searchInput: { backgroundColor: '#eeeeee', padding: 10, borderRadius: 10 },
+  searchInput: { padding: 10, borderRadius: 10, borderWidth: 1 },
   filterRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
-  filterButton: { padding: 8, backgroundColor: '#eee', borderRadius: 20 },
-  filterButtonActive: { backgroundColor: '#f7ddf9' },
-  placeCard: { padding: 12, backgroundColor: '#f9f9f9', marginVertical: 6, borderRadius: 10 },
+  filterButton: { padding: 8, borderRadius: 20, borderWidth: 1 },
+  //filterButtonActive: { backgroundColor: '#f7ddf9' },
+  placeCard: { padding: 12, marginVertical: 6, borderRadius: 10, borderWidth: 1 },
   placeName: { fontWeight: 'bold' },
-  button: { backgroundColor: '#f7ddf9', padding: 15, borderRadius: 12, alignItems: 'center' },
+  button: { padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
 });

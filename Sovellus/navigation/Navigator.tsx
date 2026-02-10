@@ -36,8 +36,26 @@ export default function Navigator() {
                     ),
                 })}
             />
-            <Stack.Screen name="Map" component={MapScreen} />
-            <Stack.Screen name="Reviews" component={ReviewScreen} />
+            
+            <Stack.Screen 
+                name="Map"
+                component={MapScreen} 
+                options={{
+                    title: "Kartta",
+                    headerStyle: { backgroundColor: theme.backgroundColor },
+                    headerTintColor: theme.text,
+                }}
+            />
+
+            <Stack.Screen 
+                name="Reviews" 
+                component={ReviewScreen} 
+                options={{
+                    title: "Arvostelut",
+                    headerStyle: { backgroundColor: theme.backgroundColor },
+                    headerTintColor: theme.text,
+                }}
+            />
 
             <Stack.Screen
                 name="Settings"

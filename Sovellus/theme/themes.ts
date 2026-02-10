@@ -2,16 +2,24 @@ export type ThemeType = 'light' | 'dark';
 
 export const lightTheme = {
     backgroundColor: '#FFFFFF',
-    input: '#eeeeee',
-    primary: '"#E6DDF9',
-    card: '#F2F2F2',
+
+    surface: '#F9F9F9', // kortit
+    input: '#eeeeee',   // input-kentät ja filteri
+    primary: '"#E6DDF9', // aktiivinen elementti/painike
+
+    border: '#DDDDDD',
     text: '#000000',
+    textSecondary: '#555555',
 };
 
 export const darkTheme = {
     backgroundColor: '#121212',
-    input: '#2a2a2a',
-    primary: '#6C63FF',
-    card: '#1E1E1E',
-    text: '#d4d4d4c9',
+
+    surface: '#1C1C1E', // kortit
+    input: '#383737',  // input-kentät ja filteri
+    primary: '#e890ebb2', // aktiivinen elementti/painike
+
+    border: 'rgba(255, 255, 255, 0.12)', // tumman teeman border
+    text: '#b3abab',
+    textSecondary: '#B0B0B0',
 };
