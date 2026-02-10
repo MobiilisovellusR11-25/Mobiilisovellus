@@ -12,60 +12,58 @@ import SettingsScreen from '../screens/SettingsScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function Navigator() {
-    const { theme } = useTheme();
+  const { theme } = useTheme();
 
-    return (
-        <Stack.Navigator>
-            <Stack.Screen
-                name="Home"
-                component={HomeScreen}
-                options={({ navigation }) => ({
-                    title: "Etusivu",
-                    headerStyle: {
-                        backgroundColor: theme.backgroundColor,
-                    },
-                    headerTintColor: theme.text,
-                    headerRight: () => (
-                        <Pressable onPress={() => navigation.navigate("Settings")}>
-                            <Ionicons
-                                name="settings-outline"
-                                size={24}
-                                color={theme.text}
-                            />
-                        </Pressable>
-                    ),
-                })}
-            />
-            
-            <Stack.Screen 
-                name="Map"
-                component={MapScreen} 
-                options={{
-                    title: "Kartta",
-                    headerStyle: { backgroundColor: theme.backgroundColor },
-                    headerTintColor: theme.text,
-                }}
-            />
+  return (
+    <Stack.Navigator>
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={({ navigation }) => ({
+          title: 'Etusivu',
+          headerStyle: { backgroundColor: theme.backgroundColor },
+          headerTintColor: theme.text,
+          headerRight: () => (
+            <Pressable onPress={() => navigation.navigate('Settings')}>
+              <Ionicons
+                name="settings-outline"
+                size={24}
+                color={theme.text}
+              />
+            </Pressable>
+          ),
+        })}
+      />
 
-            <Stack.Screen 
-                name="Reviews" 
-                component={ReviewScreen} 
-                options={{
-                    title: "Arvostelut",
-                    headerStyle: { backgroundColor: theme.backgroundColor },
-                    headerTintColor: theme.text,
-                }}
-            />
+      <Stack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{
+          title: 'Kartta',
+          headerStyle: { backgroundColor: theme.backgroundColor },
+          headerTintColor: theme.text,
+        }}
+      />
 
-            <Stack.Screen
-                name="Settings"
-                component={SettingsScreen}
-                options={{ 
-                    title: "Asetukset",
-                    headerStyle: { backgroundColor: theme.backgroundColor },
-                    headerTintColor: theme.text,
-                 }}
-            />
-        </Stack.Navigator>
-    );
+      <Stack.Screen
+        name="Reviews"
+        component={ReviewScreen}
+        options={{
+          title: 'Arvostelut',
+          headerStyle: { backgroundColor: theme.backgroundColor },
+          headerTintColor: theme.text,
+        }}
+      />
+
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'Asetukset',
+          headerStyle: { backgroundColor: theme.backgroundColor },
+          headerTintColor: theme.text,
+        }}
+      />
+    </Stack.Navigator>
+  );
 }
