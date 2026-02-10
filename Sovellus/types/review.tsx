@@ -5,4 +5,5 @@ export type Review = {
   comment: string;
   imageUrl?: string;
   createdAt: Date;
+  username?: string;
 };

@@ -21,7 +21,7 @@ import {
   getDocs,
   orderBy,
 } from 'firebase/firestore';
-import { db, storage } from '../firebase';
+import { db, storage, auth } from '../firebase';
 
 import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -33,6 +33,8 @@ type Review = {
   rating: number;
   comment: string;
   imageUrl?: string | null;
+  username?: string | null;
+  userId?: string;
 };
 
 export default function ReviewScreen({ route }: Props) {
@@ -45,15 +47,14 @@ export default function ReviewScreen({ route }: Props) {
   const [image, setImage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  //Hae arvostelut
   const fetchReviews = async () => {
     const q = query(
       collection(db, 'reviews'),
       where('placeId', '==', place.id),
       orderBy('createdAt', 'desc')
     );
-    const snapshot = await getDocs(q);
 
+    const snapshot = await getDocs(q);
     const data = snapshot.docs.map(doc => ({
       id: doc.id,
       ...(doc.data() as Omit<Review, 'id'>),
@@ -66,7 +67,6 @@ export default function ReviewScreen({ route }: Props) {
     fetchReviews();
   }, []);
 
-  // Kamera
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
@@ -74,75 +74,47 @@ export default function ReviewScreen({ route }: Props) {
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (!result.canceled) setImage(result.assets[0].uri);
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
 
-    if (!result.canceled) {
-      setImage(result.assets[0].uri);
-    }
+    if (!result.canceled) setImage(result.assets[0].uri);
   };
 
-  //Galleria
-const pickImage = async () => {
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 0.7,
-  });
-
-  if (!result.canceled) {
-    setImage(result.assets[0].uri);
-  }
-};
-
-
-  // Lataa kuva ominaisuus
   const uploadImageAsync = async (uri: string): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
+    const response = await fetch(uri);
+    const blob = await response.blob();
 
-    xhr.onload = async () => {
-      const blob = xhr.response as Blob;
+    const filename = `reviews/${place.id}_${Date.now()}.jpg`;
+    const imageRef = ref(storage, filename);
 
-      try {
-        const filename = `reviews/${place.id}_${Date.now()}.jpg`;
-        const imageRef = ref(storage, filename);
+    await uploadBytes(imageRef, blob);
+    return await getDownloadURL(imageRef);
+  };
 
-        await uploadBytes(imageRef, blob);
-        const downloadUrl = await getDownloadURL(imageRef);
-
-        resolve(downloadUrl);
-      } catch (e) {
-        reject(e);
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Image upload failed'));
-
-    xhr.responseType = 'blob';
-    xhr.open('GET', uri, true);
-    xhr.send(null);
-  });
-};
-
-
-
-  // Lähetä arvostelu
   const submitReview = async () => {
     if (!comment.trim()) return;
 
     setUploading(true);
     try {
       let imageUrl: string | null = null;
-      if (image) {
-        imageUrl = await uploadImageAsync(image);
-      }
+      if (image) imageUrl = await uploadImageAsync(image);
+
+      const user = auth.currentUser;
 
       await addDoc(collection(db, 'reviews'), {
         placeId: place.id,
         rating,
         comment,
-        ...(imageUrl ? { imageUrl } : {}),
+        imageUrl,
+        userId: user?.uid,
+        username: user?.email,
         createdAt: serverTimestamp(),
       });
 
@@ -150,9 +122,9 @@ const pickImage = async () => {
       setRating(5);
       setImage(null);
 
-      await fetchReviews();
+      fetchReviews();
     } catch (e) {
-      console.error('❌ submitReview', e);
+      console.error(e);
       alert('Arvostelun lähetys epäonnistui');
     } finally {
       setUploading(false);
@@ -176,22 +148,13 @@ const pickImage = async () => {
         data={reviews}
         keyExtractor={item => item.id}
         renderItem={({ item }) => (
-          <View 
-            style={[
-              styles.reviewCard,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-                borderWidth: 1,
-              },
-            ]}
-          >
+          <View style={styles.reviewCard}>
+            <Text style={{ fontWeight: 'bold' }}>
+              👤 {item.username ?? 'Anonyymi'}
+            </Text>
 
             {item.imageUrl && (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.reviewImage}
-              />
+              <Image source={{ uri: item.imageUrl }} style={styles.reviewImage} />
             )}
 
             <Text style={{
