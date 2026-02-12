@@ -1,6 +1,26 @@
-// utils/notifications.ts
-import { Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
-export const sendLocalNotification = (title: string, message: string) => {
-  Alert.alert(title, message);
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+export const sendLocalNotification = async (title: string, body: string) => {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: true,
+    },
+    trigger: null,
+  });
+};
+
+export const startRepeatingNotification = (callback: () => void, interval = 20000) => {
+  const id = setInterval(callback, interval);
+  return () => clearInterval(id);
 };

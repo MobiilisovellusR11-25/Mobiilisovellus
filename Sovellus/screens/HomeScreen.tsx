@@ -6,19 +6,16 @@ import {
   ActivityIndicator,
   TextInput,
   FlatList,
+  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Place } from '../types/navigation';
-
 import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTheme } from '../theme/ThemeContext';
-
-
-import { registerForPushNotificationsAsync } from '../utils/notifications';
-import { getUserId } from '../utils/user';
+import { sendLocalNotification } from '../utils/notifications';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 type FilterType = 'all' | 'restaurant' | 'cafe';
@@ -31,22 +28,15 @@ export default function HomeScreen({ navigation }: Props) {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
 
- // notifikaatiot
   useEffect(() => {
-    const setupNotifications = async () => {
-      const token = await registerForPushNotificationsAsync();
-      if (!token) return;
-
-      const userId = await getUserId();
-
-      await setDoc(
-        doc(db, 'users', userId),
-        { pushToken: token },
-        { merge: true }
+    const interval = setInterval(() => {
+      sendLocalNotification(
+        "Etkö ole löytänyt vielä ravintolaa?",
+        "Klikkaa tästä nähdäksesi ravintolatarjonta"
       );
-    };
+    }, 60000);
 
-    setupNotifications();
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -59,14 +49,14 @@ export default function HomeScreen({ navigation }: Props) {
     for (const place of updated) {
       const q = query(
         collection(db, 'reviews'),
-        where('placeId', '==', place.id)
+        where('placeId', '==', place.id.toString())
       );
 
       const snapshot = await getDocs(q);
 
       if (!snapshot.empty) {
-        const ratings = snapshot.docs.map(d => Number(d.data().rating) || 0);
-        const avg = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+        const ratings = snapshot.docs.map(d => Number((d.data() as any).rating) || 0);
+        const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
         place.avgRating = Number(avg.toFixed(1));
         place.reviewCount = ratings.length;
       } else {
@@ -117,7 +107,6 @@ export default function HomeScreen({ navigation }: Props) {
         .map((item: any) => {
           const lat = item.lat ?? item.center?.lat;
           const lon = item.lon ?? item.center?.lon;
-
           if (!lat || !lon) return null;
 
           return {
@@ -170,14 +159,7 @@ export default function HomeScreen({ navigation }: Props) {
       <Text style={{ color: theme.text }}>Tervetuloa!</Text>
 
       <TextInput
-        style={[
-          styles.searchInput,
-          {
-            backgroundColor: theme.input,
-            borderColor: theme.border,
-            color: theme.text,
-          }
-        ]}
+        style={[styles.searchInput, { backgroundColor: theme.input, borderColor: theme.border, color: theme.text }]}
         placeholder="🔍 Hae ravintolaa"
         value={search}
         onChangeText={setSearch}
@@ -187,19 +169,10 @@ export default function HomeScreen({ navigation }: Props) {
         {(['all', 'restaurant', 'cafe'] as FilterType[]).map(f => (
           <TouchableOpacity
             key={f}
-            style={[
-              styles.filterButton,
-              {
-                backgroundColor:
-                  filter === f ? theme.primary : theme.input,
-                borderColor: theme.border,
-              },
-            ]}
+            style={[styles.filterButton, { backgroundColor: filter === f ? theme.primary : theme.input, borderColor: theme.border }]}
             onPress={() => setFilter(f)}
           >
-            <Text>
-              {f === 'all' ? 'Kaikki' : f === 'restaurant' ? 'Ravintolat' : 'Kahvilat'}
-            </Text>
+            <Text>{f === 'all' ? 'Kaikki' : f === 'restaurant' ? 'Ravintolat' : 'Kahvilat'}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -212,78 +185,26 @@ export default function HomeScreen({ navigation }: Props) {
           keyExtractor={item => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[
-                styles.placeCard,
-                {
-                  backgroundColor: theme.surface,
-                  borderColor: theme.border,
-                },
-              ]}
+              style={[styles.placeCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
               onPress={() => navigation.navigate('Reviews', { place: item })}
             >
-              <Text style={[
-                styles.placeName,
-                { color: theme.text }
-              ]}>
-                {item.name}
-              </Text>
-
-              {item.avgRating && (
-                <Text style={{ color: theme.textSecondary }}>
-                  ⭐ {item.avgRating} ({item.reviewCount})
-                </Text>
-              )}
-
-              {item.cuisine && (
-              <Text style={{ color: theme.textSecondary }}>
-                🍽 {item.cuisine}
-              </Text>
-              )}
-              
-              {item.openingHours && (
-                <Text style={{ color: theme.textSecondary }}>
-                  ⏰ {item.openingHours}
-                </Text>
-              )}
-
-              <Text style={{ color: theme.textSecondary }}>
-                {item.address}
-              </Text>
-
-              <Text style={{ color: theme.textSecondary }}>
-                {item.distance.toFixed(2)} km
-              </Text>
+              <Text style={[styles.placeName, { color: theme.text }]}>{item.name}</Text>
+              {item.avgRating && <Text style={{ color: theme.textSecondary }}>⭐ {item.avgRating} ({item.reviewCount})</Text>}
+              {item.cuisine && <Text style={{ color: theme.textSecondary }}>🍽 {item.cuisine}</Text>}
+              {item.openingHours && <Text style={{ color: theme.textSecondary }}>⏰ {item.openingHours}</Text>}
+              <Text style={{ color: theme.textSecondary }}>{item.address}</Text>
+              <Text style={{ color: theme.textSecondary }}>{item.distance.toFixed(2)} km</Text>
             </TouchableOpacity>
           )}
         />
       )}
 
       <TouchableOpacity
-        style={[
-          styles.button,
-          {
-            backgroundColor:
-              places.length === 0
-                ? theme.input
-                : theme.primary,
-            borderColor: theme.border,
-            opacity: places.length === 0 ? 0.6 : 1,
-          },
-        ]}
+        style={[styles.button, { backgroundColor: places.length === 0 ? theme.input : theme.primary, borderColor: theme.border, opacity: places.length === 0 ? 0.6 : 1 }]}
         onPress={() => navigation.navigate('Map', { places })}
         disabled={places.length === 0}
       >
-        <Text
-          style={{
-            color:
-              places.length === 0
-                ? theme.textSecondary
-                : theme.text,
-              fontWeight: "bold",
-              fontSize: 16,
-          }}
-        >
-          📍 Kartta</Text>
+        <Text style={{ color: places.length === 0 ? theme.textSecondary : theme.text, fontWeight: 'bold', fontSize: 16 }}>📍 Kartta</Text>
       </TouchableOpacity>
     </View>
   );
@@ -293,23 +214,15 @@ const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10 },
-  title: { fontSize: 26, textAlign: 'center', fontWeight: 'bold' },
   searchInput: { padding: 10, borderRadius: 10, borderWidth: 1 },
   filterRow: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
   filterButton: { padding: 8, borderRadius: 20, borderWidth: 1 },
-  //filterButtonActive: { backgroundColor: '#f7ddf9' },
   placeCard: { padding: 12, marginVertical: 6, borderRadius: 10, borderWidth: 1 },
   placeName: { fontWeight: 'bold' },
   button: { padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
