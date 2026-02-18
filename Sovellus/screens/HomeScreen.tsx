@@ -6,13 +6,12 @@ import {
   ActivityIndicator,
   TextInput,
   FlatList,
-  Platform,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, Place } from '../types/navigation';
-import { collection, getDocs, query, where, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTheme } from '../theme/ThemeContext';
 import { sendLocalNotification } from '../utils/notifications';

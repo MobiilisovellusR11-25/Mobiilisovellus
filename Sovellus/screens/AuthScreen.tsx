@@ -71,20 +71,17 @@ import {
   
       try {
         if (isRegister) {
-          // 🔐 Rekisteröinti
           const cred = await createUserWithEmailAndPassword(
             auth,
             email,
             password
           );
   
-          // 👤 users-kokoelma Firestoreen
           await setDoc(doc(db, 'users', cred.user.uid), {
             email: cred.user.email,
             createdAt: serverTimestamp(),
           });
         } else {
-          // 🔓 Kirjautuminen
           await signInWithEmailAndPassword(auth, email, password);
         }
       } catch (e: any) {
