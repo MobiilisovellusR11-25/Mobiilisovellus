@@ -6,3 +6,6 @@
 // npm install @react-navigation/stack
 // npx expo install expo-location react-native-maps
 // npm install @react-navigation/native @react-navigation/native-stack
+// npm install firebase
+// npx expo install expo-notifications expo-secure-store
+// npx expo install expo-secure-store
